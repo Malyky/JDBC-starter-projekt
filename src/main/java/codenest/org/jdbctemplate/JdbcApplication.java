@@ -11,8 +11,10 @@ import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.CallableStatementCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
+import java.sql.Types;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +36,6 @@ public class JdbcApplication implements CommandLineRunner {
 	@Override
 	public void run(String... args) throws Exception {
 		log.info("Creating tables");
-
 		jdbcTemplate.execute("DROP TABLE customers IF EXISTS");
 		jdbcTemplate.execute("CREATE TABLE customers(" +
 				"id SERIAL, first_name VARCHAR(255), last_name VARCHAR(255))");
@@ -71,6 +72,16 @@ public class JdbcApplication implements CommandLineRunner {
 		Long id = 1L;
 		Customer customer = jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(Customer.class), id);
 		Customer customer2 = jdbcTemplate.queryForObject(sql, new CustomerRowMapper(), id);
+
+		Customer hans = new Customer("Hans", "Mueller");
+		BeanPropertySqlParameterSource beanPropertySqlParameterSource = new BeanPropertySqlParameterSource(hans);
+		beanPropertySqlParameterSource.registerSqlType("yesNoEnumInCustomer", Types.VARCHAR);
+		namedParameterJdbcTemplate.update("Insert into Customers (first_name, last_name) Values(:firstName, :lastName)", beanPropertySqlParameterSource);
+
+		jdbcTemplate.query(
+				"SELECT id, first_name, last_name FROM customers WHERE first_name = ?", new Object[] { "Hans" },
+				(rs, rowNum) -> new Customer(rs.getLong("id"), rs.getString("first_name"), rs.getString("last_name"))
+		).forEach(p-> log.info(p.toString()));
 	}
 
 }
