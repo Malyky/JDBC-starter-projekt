@@ -7,10 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.jdbc.core.BeanPropertyRowMapper;
+import org.springframework.jdbc.core.CallableStatementCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @SpringBootApplication
@@ -23,6 +28,8 @@ public class JdbcApplication implements CommandLineRunner {
 
 	@Autowired
 	JdbcTemplate jdbcTemplate;
+	@Autowired
+	NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
 	@Override
 	public void run(String... args) throws Exception {
@@ -42,12 +49,28 @@ public class JdbcApplication implements CommandLineRunner {
 
 		// Uses JdbcTemplate's batchUpdate operation to bulk load data
 		jdbcTemplate.batchUpdate("INSERT INTO customers(first_name, last_name) VALUES (?,?)", splitUpNames);
+		jdbcTemplate.execute("INSERT INTO customers(first_name, last_name) VALUES ('Martin','codenest')");
+		jdbcTemplate.update("INSERT INTO customers(first_name, last_name) VALUES (?,?)", "Martin", "codenestNamedParameter");
+		namedParameterJdbcTemplate.update("INSERT INTO customers(first_name, last_name) VALUES (:firstName,:lastName)",
+				Map.of("firstName", "Martin", "lastName", "codeNestNamedJdbcTemplate"));
 
 		log.info("Querying for customer records where first_name = 'Josh':");
 		jdbcTemplate.query(
 				"SELECT id, first_name, last_name FROM customers WHERE first_name = ?", new Object[] { "Josh" },
 				(rs, rowNum) -> new Customer(rs.getLong("id"), rs.getString("first_name"), rs.getString("last_name"))
 		).forEach(customer -> log.info(customer.toString()));
+
+		jdbcTemplate.query(
+				"SELECT id, first_name, last_name FROM customers WHERE first_name = ?", new Object[] { "Martin" },
+				(rs, rowNum) -> new Customer(rs.getLong("id"), rs.getString("first_name"), rs.getString("last_name"))
+		).forEach(p-> log.info(p.toString()));
+
+
+		// Queries:
+		String sql = "SELECT id, first_name, last_name FROM customers WHERE id = ?";
+		Long id = 1L;
+		Customer customer = jdbcTemplate.queryForObject(sql, new BeanPropertyRowMapper<>(Customer.class), id);
+		Customer customer2 = jdbcTemplate.queryForObject(sql, new CustomerRowMapper(), id);
 	}
 
 }
