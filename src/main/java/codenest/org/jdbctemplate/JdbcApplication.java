@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 
 import java.sql.Types;
 import java.util.Arrays;
@@ -80,6 +81,17 @@ public class JdbcApplication implements CommandLineRunner {
 
 		jdbcTemplate.query(
 				"SELECT id, first_name, last_name FROM customers WHERE first_name = ?", new Object[] { "Hans" },
+				(rs, rowNum) -> new Customer(rs.getLong("id"), rs.getString("first_name"), rs.getString("last_name"))
+		).forEach(p-> log.info(p.toString()));
+
+		SimpleJdbcInsert insert = new SimpleJdbcInsert(jdbcTemplate);
+		insert.withTableName("Customers");
+		Customer hansi = new Customer("Louisa", "Mueller");
+		BeanPropertySqlParameterSource hansiSql = new BeanPropertySqlParameterSource(hansi);
+		insert.execute(hansiSql);
+
+		jdbcTemplate.query(
+				"SELECT id, first_name, last_name FROM customers WHERE first_name = ?", new Object[] { "Louisa" },
 				(rs, rowNum) -> new Customer(rs.getLong("id"), rs.getString("first_name"), rs.getString("last_name"))
 		).forEach(p-> log.info(p.toString()));
 	}
